@@ -1,32 +1,23 @@
 
 #include "select.h"
 #include "BPlus_tree.h"
+#include "join.h"
+#include "project.h"
+#include "sort.h"
 using namespace std;
 
 int main() {
     auto* buffer=new Buffer();
     initBuffer(520,64,buffer);
-//    BinarySearch2(30,90,buffer);
-//    LinearSelect2(30,70,buffer);
-//    LinearSelect1(30,60,buffer);
-//    int* blk1= reinterpret_cast<int *>(readBlockFromDisk(70, buffer));
-//    int* blk2= reinterpret_cast<int *>(readBlockFromDisk(90, buffer));
-//    for (int i = 0; i < 16; ++i) {
-//        cout<<blk1[i]<<" ";
-//    }
-//    cout<<endl;
-//    for (int j = 0; j < 16; ++j) {
-//        cout<<blk2[j]<<" ";
-//    }
-    CBPlusTree cbPlusTree;
-    cbPlusTree.insert(3,2);
-    cbPlusTree.insert(4,2);
-    cbPlusTree.insert(2,4);
-    cbPlusTree.insert(2,5);
-    cout<<cbPlusTree.search(5)<<endl;
-    cout<<cbPlusTree.search(3)<<endl;
-    cout<<cbPlusTree.search(2)<<endl;
-
+    for (int i = 301; i <=316 ; ++i) {
+        int* block= reinterpret_cast<int *>(readBlockFromDisk(i, buffer));
+        for (int j = 0; j < 16; ++j) {
+            cout<<block[j]<<" ";
+        }
+        freeBlockInBuffer(reinterpret_cast<unsigned char *>(block), buffer);
+        cout<<endl;
+    }
+    sort_merge(buffer,301,307,320);
 }
 
 

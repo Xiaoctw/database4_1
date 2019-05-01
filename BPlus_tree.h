@@ -36,7 +36,6 @@ public:
 private:
     void recursive_insert(CNode* parentNode, KeyType key, const DataType& data);
     void recursive_remove(CNode* parentNode, KeyType key);
-    void printInConcavo(CNode *pNode, int count)const;
     bool recursive_search(CNode *pNode, KeyType key)const;
     void changeKey(CNode *pNode, KeyType oldKey, KeyType newKey);
     void search(KeyType key, SelectResult& result);
@@ -46,7 +45,8 @@ private:
 private:
     CNode* m_Root;//根节点
     CLeafNode* m_DataHead;//最左端叶子节点
-    KeyType m_MaxKey;  // B+树中的最大键
+    KeyType m_MaxKey{};  // B+树中的最大键
+    map<int,set<int>> vectors;
 };
 
 CBPlusTree::CBPlusTree(){
@@ -65,7 +65,7 @@ bool CBPlusTree::insert(KeyType key, const DataType& data){
 //        return false;
 //    }
     // 找到可以插入的叶子结点，否则创建新的叶子结点
-    if(m_Root==NULL)
+    if(m_Root==nullptr)
     {
         m_Root = new CLeafNode();
         m_DataHead = (CLeafNode*)m_Root;
@@ -73,7 +73,7 @@ bool CBPlusTree::insert(KeyType key, const DataType& data){
     }
     if (m_Root->getKeyNum()>=MAXNUM_KEY) // 根结点已满，分裂
     {
-        CInternalNode* newNode = new CInternalNode();  //创建新的根节点
+        auto* newNode = new CInternalNode();  //创建新的根节点
         newNode->setChild(0, m_Root);
         m_Root->split(newNode, 0);    // 叶子结点分裂
         m_Root = newNode;  //更新根节点指针
@@ -83,6 +83,7 @@ bool CBPlusTree::insert(KeyType key, const DataType& data){
         m_MaxKey = key;
     }
     recursive_insert(m_Root, key, data);
+    vectors[key].insert(data);
     return true;
 }
 
@@ -154,28 +155,6 @@ bool CBPlusTree::recursive_search(CNode *pNode, KeyType key)const
     }
 }
 
-void CBPlusTree::printInConcavo(CNode *pNode, int count) const{
-    if (pNode!=NULL)
-    {
-        int i, j;
-        for (i=0; i<pNode->getKeyNum(); ++i)
-        {
-            if (pNode->getType()!=LEAF)
-            {
-                printInConcavo(((CInternalNode*)pNode)->getChild(i), count-2);
-            }
-            for (j=count; j>=0; --j)
-            {
-                //cout<<"-";
-            }
-            //cout<<pNode->getKeyValue(i)<<endl;
-        }
-        if (pNode->getType()!=LEAF)
-        {
-            printInConcavo(((CInternalNode*)pNode)->getChild(i), count-2);
-        }
-    }
-}
 
 bool CBPlusTree::remove(KeyType key)
 {

@@ -84,7 +84,7 @@ private:
     CLeafNode* m_LeftSibling;
     CLeafNode* m_RightSibling;
     DataType m_Datas[MAXNUM_LEAF];
-   // vector<DataType > m_Datas[MAXNUM_LEAF];
+    // vector<DataType > m_Datas[MAXNUM_LEAF];
 };
 
 
