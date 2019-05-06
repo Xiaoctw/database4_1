@@ -4,20 +4,28 @@
 #include "join.h"
 #include "project.h"
 #include "sort.h"
+
 using namespace std;
 
 int main() {
     auto* buffer=new Buffer();
     initBuffer(520,64,buffer);
-    for (int i = 301; i <=316 ; ++i) {
-        int* block= reinterpret_cast<int *>(readBlockFromDisk(i, buffer));
-        for (int j = 0; j < 16; ++j) {
-            cout<<block[j]<<" ";
-        }
-        freeBlockInBuffer(reinterpret_cast<unsigned char *>(block), buffer);
-        cout<<endl;
+//    int* blk= reinterpret_cast<int *>(readBlockFromDisk(60, buffer));
+//    for (int i = 0; i < 14; i+=2) {
+//        cout<<blk[i]<<" "<<blk[i+1]<<" ";
+//    }
+//    cout<<endl;
+//    BinarySearch(buffer,30,61);
+    int* resblk= reinterpret_cast<int *>(readBlockFromDisk(61, buffer));
+    for (int i = 0; i < 14; i+=2) {
+        cout<<resblk[i]<<" "<<resblk[i+1]<<" ";
     }
-    sort_merge(buffer,301,307,320);
+    cout<<endl;
+    SearchBPlusTree(buffer,30,62);
+    resblk= reinterpret_cast<int *>(readBlockFromDisk(62, buffer));
+    for (int i = 0; i < 14; i+=2) {
+        cout<<resblk[i]<<" "<<resblk[i+1]<<" ";
+    }
 }
 
 

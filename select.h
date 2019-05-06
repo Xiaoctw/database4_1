@@ -4,6 +4,7 @@
 
 #include <iostream>
 #include "extrem.h"
+#include "BPlus_tree.h"
 #include <random>
 #include <map>
 #include <cstdio>
@@ -12,6 +13,7 @@
 #include <set>
 #include <fstream>
 #include <cstring>
+#include "BPlus_tree.h"
 #ifndef DATABASE4_1_SELECT_H
 #define DATABASE4_1_SELECT_H
 #define N 50
@@ -70,6 +72,12 @@ void LinearSelect1(int val1,int addr,Buffer* buffer){
     }
 }
 
+/**
+ * 现行线性选择算法,从S中选择C的值为val的元祖
+ * @param val 值
+ * @param addr 初始的地址
+ * @param buffer 就是buffer
+ */
 void LinearSelect2(int val,int addr,Buffer* buffer){
     int totalNumBlock=32;
     int K=7;//每个块中元组个数
@@ -138,171 +146,139 @@ vector<int> split(string& str,string& pattern){
     return vector1;
 }
 
-void makeIndex1(Buffer* buffer){
-    map<int,set<int>> indexes;
-    for (int i = 1; i <= 16 ; ++i) {
-        int* block= reinterpret_cast<int *>(readBlockFromDisk(i, buffer));
-        for (int j = 0; j < 14; j+=2) {
-            int i1=block[j];
-            indexes[i1].insert(i);
+
+/**
+ * 二分搜索算法,从340-355中选择出A的值为给定的值的所有元素
+ * @param buffer
+ * @param val 给定的值
+ * @param addr 放到这里
+ */
+void BinarySearch(Buffer* buffer,int val,int addr){
+    int lo=340,hi=355;
+    int target=-1;
+    while (lo<=hi){
+        int mid=(lo+hi)/2;
+        if(mid<hi){
+            int* blk1= reinterpret_cast<int *>(readBlockFromDisk(mid, buffer));
+            int* blk2= reinterpret_cast<int *>(readBlockFromDisk(mid+1, buffer));
+            if(blk1[0]<=val&&blk2[0]>=val){
+                target=mid;
+                break;
+            } else if(blk1[0]>val){
+                hi=mid-1;
+            } else{
+                lo=mid+1;
+            }
+            freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk1), buffer);
+            freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk2), buffer);
+        } else{
+            target=mid;
+            break;
         }
-        freeBlockInBuffer(reinterpret_cast<unsigned char *>(block), buffer);
     }
-    FILE* fp=fopen("关系R索引文件","w");
-    for(const auto& pair:indexes){
-        fprintf(fp,"%d ",pair.first);
-        for(auto x:pair.second){
-            fprintf(fp,"%d ",x);
+    int* resblk= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
+    int index=0;
+    for (int i = target; i <=355 ; ++i) {
+        int* blk= reinterpret_cast<int *>(readBlockFromDisk(i, buffer));
+        for (int j = 0; j < 14; j+=2) {
+            if(blk[j]==val){
+               // cout<<blk[j]<<" "<<blk[j+1]<<" ";
+               resblk[index]=blk[j];
+               resblk[index+1]=blk[j+1];
+               index+=2;
+               if(index==14){
+                   resblk[index]=0;
+                   resblk[index+1]=addr+1;
+                   writeBlockToDisk(reinterpret_cast<unsigned char *>(resblk), addr, buffer);
+                   addr++;
+                   index=0;
+               }
+            }
+            if(blk[j]>val){
+                if(index!=0){
+                    for (int k = index; k < 16; ++k) {
+                        resblk[k]=0;
+                    }
+                    writeBlockToDisk(reinterpret_cast<unsigned char *>(resblk), addr, buffer);
+                }
+                return;
+            }
         }
-        fprintf(fp,"\n");
     }
 }
-void makeIndex2(Buffer* buffer){
-    map<int,set<int>> indexes;
-    for (int i = 20; i <= 51 ; ++i) {
-        int* block= reinterpret_cast<int *>(readBlockFromDisk(i, buffer));
+/**
+ * 建立一颗B+树
+ * @return 返回一个B+树
+ */
+CBPlusTree* makeTree(Buffer* buffer){
+    auto* tree=new CBPlusTree();
+    tree->insert(1,4);
+    tree->insert(2,4);
+    tree->insert(3,2);
+    int tem=0;
+    bool  first= true;
+    for (int i = 340; i <=355 ; ++i) {
+        int* blk= reinterpret_cast<int *>(readBlockFromDisk(i, buffer));
         for (int j = 0; j < 14; j+=2) {
-            int i1=block[j];
-            indexes[i1].insert(i);
+            if(first){
+                first= false;
+                tem=blk[j];
+                tree->insert(tem,i);
+            } else{
+                if(blk[j]!=tem){
+                    tem=blk[j];
+                    tree->insert(tem,i);
+                }
+            }
         }
-        freeBlockInBuffer(reinterpret_cast<unsigned char *>(block), buffer);
+        freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk), buffer);
     }
-    FILE* fp=fopen("关系S索引文件","w");
-    for(const auto& pair:indexes){
-        fprintf(fp,"%d ",pair.first);
-        for(auto x:pair.second){
-            fprintf(fp,"%d ",x);
+    return tree;
+}
+/**
+ * 利用B+树进行建立索引,并且查找操作
+ * @param buffer 缓冲区
+ * @param val 值
+ * @param addr 存放地址
+ */
+void SearchBPlusTree(Buffer* buffer,int val,int addr){
+    auto tree=makeTree(buffer);
+    auto res=tree->selectArrange(val,val);
+    int beg=res[0];
+    int* resblk= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
+    int index=0;
+    for (int i = beg; i <=355 ; ++i) {
+        int* blk= reinterpret_cast<int *>(readBlockFromDisk(i, buffer));
+        for (int j = 0; j < 14; j+=2) {
+            if(blk[j]==val){
+                // cout<<blk[j]<<" "<<blk[j+1]<<" ";
+                resblk[index]=blk[j];
+                resblk[index+1]=blk[j+1];
+                index+=2;
+                if(index==14){
+                    resblk[index]=0;
+                    resblk[index+1]=addr+1;
+                    writeBlockToDisk(reinterpret_cast<unsigned char *>(resblk), addr, buffer);
+                    addr++;
+                    index=0;
+                }
+            }
+            if(blk[j]>val){
+                if(index!=0){
+                    for (int k = index; k < 16; ++k) {
+                        resblk[k]=0;
+                    }
+                    writeBlockToDisk(reinterpret_cast<unsigned char *>(resblk), addr, buffer);
+                }
+                return;
+            }
         }
-        fprintf(fp,"\n");
     }
 }
 
-void BinarySearch1(int val, int beg_blk,Buffer* buffer){
-    vector<vector<int>> vectors ;
-//    FILE* fp=fopen("关系R索引文件","r");
-    ifstream in("关系R索引文件");
-    string line;
-    string pattern=" ";
-    if(in){
-        while (getline(in,line)){
-            vector<int > vector1=split(line, pattern);
-            vectors.push_back(vector1);
-        }
-    }
-    int end=vectors.size()-1,beg=0;
-    vector<int> vector1;
-    while (beg<=end){
-        int mid=(beg+end)/2;
-        if(vectors[mid][0]==val){
-            vector1= vectors[mid];
-            break;
-        }else if(vectors[mid][0]>val){
-            end=mid-1;
-        } else{
-            beg=mid+1;
-        }
-    }
-    if(beg>end){
-        cout<<"没有找到对应的块"<<endl;
-        return;
-    }
-    vector<pair<int,int>> pairs;
-    for (int i = 1; i < vector1.size(); ++i) {
-        int num_blk=vector1[i];
-        int* blk= reinterpret_cast<int *>(readBlockFromDisk(num_blk, buffer));
-        for (int j = 0; j < 14; j+=2) {
-            if(blk[j]==val){
-                pairs.emplace_back(blk[j],blk[j+1]);
-            }
-        }
-        freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk), buffer);
-    }
-    int index=0;
-    int* blk= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
-    for (auto & pair : pairs) {
-        blk[index]=pair.first;
-        blk[index+1]=pair.second;
-        index+=2;
-        if(index==14){
-            blk[15]=beg_blk+1;
-            beg_blk++;
-            writeBlockToDisk(reinterpret_cast<unsigned char *>(blk), beg_blk, buffer);
-            index=0;
-            freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk), buffer);
-            blk= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
-        }
-    }
-    if(index!=0){
-        for (int i = index; i <= 15; ++i) {
-            blk[i]=0;
-        }
-        writeBlockToDisk(reinterpret_cast<unsigned char *>(blk), beg_blk, buffer);
-        freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk), buffer);
-    }
-}
-void BinarySearch2(int val, int beg_blk,Buffer* buffer){
-    vector<vector<int>> vectors ;
-//    FILE* fp=fopen("关系R索引文件","r");
-    ifstream in("关系S索引文件");
-    string line;
-    string pattern=" ";
-    if(in){
-        while (getline(in,line)){
-            vector<int > vector1=split(line, pattern);
-            vectors.push_back(vector1);
-        }
-    }
-    int end=vectors.size()-1,beg=0;
-    vector<int> vector1;
-    while (beg<=end){
-        int mid=(beg+end)/2;
-        if(vectors[mid][0]==val){
-            vector1= vectors[mid];
-            break;
-        }else if(vectors[mid][0]>val){
-            end=mid-1;
-        } else{
-            beg=mid+1;
-        }
-    }
-    if(beg>end){
-        cout<<"没有找到对应的块"<<endl;
-        return;
-    }
-    vector<pair<int,int>> pairs;
-    for (int i = 1; i < vector1.size(); ++i) {
-        int num_blk=vector1[i];
-        int* blk= reinterpret_cast<int *>(readBlockFromDisk(num_blk, buffer));
-        for (int j = 0; j < 14; j+=2) {
-            if(blk[j]==val){
-                pairs.emplace_back(blk[j],blk[j+1]);
-            }
-        }
-        freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk), buffer);
-    }
-    int index=0;
-    int* blk= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
-    for (auto & pair : pairs) {
-        blk[index]=pair.first;
-        blk[index+1]=pair.second;
-        index+=2;
-        if(index==14){
-            blk[15]=beg_blk+1;
-            beg_blk++;
-            writeBlockToDisk(reinterpret_cast<unsigned char *>(blk), beg_blk, buffer);
-            index=0;
-            freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk), buffer);
-            blk= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
-        }
-    }
-    if(index!=0){
-        for (int i = index; i <= 15; ++i) {
-            blk[i]=0;
-        }
-        writeBlockToDisk(reinterpret_cast<unsigned char *>(blk), beg_blk, buffer);
-        freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk), buffer);
-    }
-}
+
+
+
 
 
 

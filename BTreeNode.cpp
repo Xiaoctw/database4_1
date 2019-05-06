@@ -2,42 +2,42 @@
 // Created by xiao on 19-4-29.
 //
 
-#include "CNode.h"
+#include "BTreeNode.h"
 
-CNode::CNode() {
+BTreeNode::BTreeNode() {
     setType(LEAF);
     setKeyNum(0);
 }
 
-CNode::~CNode() {
+BTreeNode::~BTreeNode() {
     setKeyNum(0);
 }
 
-NODE_TYPE CNode::getType() {
+NODE_TYPE BTreeNode::getType() {
     return m_Type;
 }
 
-void CNode::setType(NODE_TYPE type) {
+void BTreeNode::setType(NODE_TYPE type) {
     m_Type=type;
 }
 
-int CNode::getKeyNum() {
+int BTreeNode::getKeyNum() {
     return m_KeyNum;
 }
 
-void CNode::setKeyNum(int n) {
+void BTreeNode::setKeyNum(int n) {
     m_KeyNum=n;
 }
 
-KeyType CNode::getKeyValue(int i) const {
+KeyType BTreeNode::getKeyValue(int i) const {
     return m_KeyValues[i];
 }
 
-void CNode::setKeyValue(int i, KeyType key) {
+void BTreeNode::setKeyValue(int i, KeyType key) {
     m_KeyValues[i]=key;
 }
 
-int CNode::getKeyIndex(KeyType key) {
+int BTreeNode::getKeyIndex(KeyType key) {
     int left = 0;
     int right = getKeyNum()-1;
     int current;
@@ -56,13 +56,11 @@ int CNode::getKeyIndex(KeyType key) {
     }
     return left;
 }
-CInternalNode::CInternalNode():CNode(){
+CInternalNode::CInternalNode():BTreeNode(){
     setType(INTERNAL);
 }
 
-CInternalNode::~CInternalNode(){
-
-}
+CInternalNode::~CInternalNode()= default;
 
 void CInternalNode::clear()
 {
@@ -74,9 +72,9 @@ void CInternalNode::clear()
     }
 }
 
-void CInternalNode::split(CNode* parentNode, int childIndex)
+void CInternalNode::split(BTreeNode* parentNode, int childIndex)
 {
-    CInternalNode* newNode = new CInternalNode();//分裂后的右节点
+    auto* newNode = new CInternalNode();//分裂后的右节点
     newNode->setKeyNum(MINNUM_KEY);
     int i;
     for (i=0; i<MINNUM_KEY; ++i)// 拷贝关键字的值
@@ -91,7 +89,7 @@ void CInternalNode::split(CNode* parentNode, int childIndex)
     ((CInternalNode*)parentNode)->insert(childIndex, childIndex+1, m_KeyValues[MINNUM_KEY], newNode);
 }
 
-void CInternalNode::insert(int keyIndex, int childIndex, KeyType key, CNode* childNode){
+void CInternalNode::insert(int keyIndex, int childIndex, KeyType key, BTreeNode* childNode){
     int i;
     for (i=getKeyNum(); i>keyIndex; --i)//将父节点中的childIndex后的所有关键字的值和子树指针向后移一位
     {
@@ -107,7 +105,7 @@ void CInternalNode::insert(int keyIndex, int childIndex, KeyType key, CNode* chi
     setKeyNum(m_KeyNum+1);
 }
 
-void CInternalNode::mergeChild(CNode* parentNode, CNode* childNode, int keyIndex)
+void CInternalNode::mergeChild(BTreeNode* parentNode, BTreeNode* childNode, int keyIndex)
 {
     // 合并数据
     insert(MINNUM_KEY, MINNUM_KEY+1, parentNode->getKeyValue(keyIndex), ((CInternalNode*)childNode)->getChild(0));
@@ -131,7 +129,7 @@ void CInternalNode::removeKey(int keyIndex, int childIndex)
     setKeyNum(getKeyNum()-1);
 }
 
-void CInternalNode::borrowFrom(CNode* siblingNode, CNode* parentNode, int keyIndex, SIBLING_DIRECTION d)
+void CInternalNode::borrowFrom(BTreeNode* siblingNode, BTreeNode* parentNode, int keyIndex, SIBLING_DIRECTION d)
 {
     switch(d)
     {
@@ -167,15 +165,13 @@ int CInternalNode::getChildIndex(KeyType key, int keyIndex)const
 }
 
 // CLeafNode
-CLeafNode::CLeafNode():CNode(){
+CLeafNode::CLeafNode():BTreeNode(){
     setType(LEAF);
     setLeftSibling(nullptr);
     setRightSibling(nullptr);
 }
 
-CLeafNode::~CLeafNode(){
-
-}
+CLeafNode::~CLeafNode()= default;
 
 void CLeafNode::clear()
 {
@@ -200,7 +196,7 @@ void CLeafNode::insert(KeyType key, const DataType& data)
     setKeyNum(m_KeyNum+1);
 }
 
-void CLeafNode::split(CNode* parentNode, int childIndex)
+void CLeafNode::split(BTreeNode* parentNode, int childIndex)
 {
     auto* newNode = new CLeafNode();//分裂后的右节点
     setKeyNum(MINNUM_LEAF);
@@ -220,7 +216,7 @@ void CLeafNode::split(CNode* parentNode, int childIndex)
     ((CInternalNode*)parentNode)->insert(childIndex, childIndex+1, m_KeyValues[MINNUM_LEAF], newNode);
 }
 
-void CLeafNode::mergeChild(CNode* parentNode, CNode* childNode, int keyIndex)
+void CLeafNode::mergeChild(BTreeNode* parentNode, BTreeNode* childNode, int keyIndex)
 {
     // 合并数据
     for (int i=0; i<childNode->getKeyNum(); ++i)
@@ -242,7 +238,7 @@ void CLeafNode::removeKey(int keyIndex, int childIndex)
     setKeyNum(getKeyNum()-1);
 }
 
-void CLeafNode::borrowFrom(CNode* siblingNode, CNode* parentNode, int keyIndex, SIBLING_DIRECTION d)
+void CLeafNode::borrowFrom(BTreeNode* siblingNode, BTreeNode* parentNode, int keyIndex, SIBLING_DIRECTION d)
 {
     switch(d)
     {

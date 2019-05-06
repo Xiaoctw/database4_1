@@ -5,14 +5,10 @@
 #ifndef DATABASE4_1_BPLUS_TREE_H
 #define DATABASE4_1_BPLUS_TREE_H
 #include <iostream>
-#include "CNode.h"
+#include "BTreeNode.h"
 #include <algorithm>
 #include <vector>
 using namespace std;
-
-enum COMPARE_OPERATOR{LT, LE, EQ, BE, BT
-}; // 比较操作符：<、<=、=、>=、>
-const int INVALID_INDEX = -1;
 
 struct SelectResult
 {
@@ -25,28 +21,23 @@ public:
     CBPlusTree();
     ~CBPlusTree();
     bool insert(KeyType key, const DataType& data);
-    bool remove(KeyType key);//删除对应键值的对
-    bool update(KeyType oldKey, KeyType newKey);
-    // 定值查询，compareOperator可以是LT(<)、LE(<=)、EQ(=)、BE(>=)、BT(>)
-    vector<DataType> select(KeyType compareKey, int compareOpeartor);
     // 范围查询，BETWEEN
     vector<DataType> selectArrange(KeyType smallKey, KeyType largeKey);
     bool search(KeyType key); // 查找是否存在
     void clear();             // 清空
 private:
-    void recursive_insert(CNode* parentNode, KeyType key, const DataType& data);
-    void recursive_remove(CNode* parentNode, KeyType key);
-    bool recursive_search(CNode *pNode, KeyType key)const;
-    void changeKey(CNode *pNode, KeyType oldKey, KeyType newKey);
+    void recursive_insert(BTreeNode* parentNode, KeyType key, const DataType& data);
+    void recursive_remove(BTreeNode* parentNode, KeyType key);
+    bool recursive_search(BTreeNode *pNode, KeyType key)const;
+    void changeKey(BTreeNode *pNode, KeyType oldKey, KeyType newKey);
     void search(KeyType key, SelectResult& result);
-    void recursive_search(CNode* pNode, KeyType key, SelectResult& result);
-    void remove(KeyType key, DataType& dataValue);
-    void recursive_remove(CNode* parentNode, KeyType key, DataType& dataValue);
+    void recursive_search(BTreeNode* pNode, KeyType key, SelectResult& result);
+    void recursive_remove(BTreeNode* parentNode, KeyType key, DataType& dataValue);
 private:
-    CNode* m_Root;//根节点
+    BTreeNode* m_Root;//根节点
     CLeafNode* m_DataHead;//最左端叶子节点
     KeyType m_MaxKey{};  // B+树中的最大键
-    map<int,set<int>> vectors;
+
 };
 
 CBPlusTree::CBPlusTree(){
@@ -83,11 +74,10 @@ bool CBPlusTree::insert(KeyType key, const DataType& data){
         m_MaxKey = key;
     }
     recursive_insert(m_Root, key, data);
-    vectors[key].insert(data);
     return true;
 }
 
-void CBPlusTree::recursive_insert(CNode* parentNode, KeyType key, const DataType& data)
+void CBPlusTree::recursive_insert(BTreeNode* parentNode, KeyType key, const DataType& data)
 {
     if (parentNode->getType()==LEAF)  // 叶子结点，直接插入
     {
@@ -98,7 +88,7 @@ void CBPlusTree::recursive_insert(CNode* parentNode, KeyType key, const DataType
         // 找到子结点
         int keyIndex = parentNode->getKeyIndex(key);
         int childIndex= parentNode->getChildIndex(key, keyIndex); // 孩子结点指针索引
-        CNode* childNode = ((CInternalNode*)parentNode)->getChild(childIndex);
+        auto childNode = ((CInternalNode*)parentNode)->getChild(childIndex);
         if (childNode->getKeyNum()>=MAXNUM_LEAF)  // 子结点已满，需进行分裂
         {
             childNode->split(parentNode, childIndex);
@@ -113,12 +103,12 @@ void CBPlusTree::recursive_insert(CNode* parentNode, KeyType key, const DataType
 
 void CBPlusTree::clear()
 {
-    if (m_Root!=NULL)
+    if (m_Root!=nullptr)
     {
         m_Root->clear();
         delete m_Root;
-        m_Root = NULL;
-        m_DataHead = NULL;
+        m_Root = nullptr;
+        m_DataHead = nullptr;
     }
 }
 
@@ -127,9 +117,9 @@ bool CBPlusTree::search(KeyType key)
     return recursive_search(m_Root, key);
 }
 
-bool CBPlusTree::recursive_search(CNode *pNode, KeyType key)const
+bool CBPlusTree::recursive_search(BTreeNode *pNode, KeyType key)const
 {
-    if (pNode==NULL)  //检测节点指针是否为空，或该节点是否为叶子节点
+    if (pNode==nullptr)  //检测节点指针是否为空，或该节点是否为叶子节点
     {
         return false;
     }
@@ -156,37 +146,8 @@ bool CBPlusTree::recursive_search(CNode *pNode, KeyType key)const
 }
 
 
-bool CBPlusTree::remove(KeyType key)
-{
-    if (!search(key))  //不存在
-    {
-        return false;
-    }
-    if (m_Root->getKeyNum()==1)//特殊情况处理
-    {
-        if (m_Root->getType()==LEAF)
-        {
-            clear();
-            return true;
-        }
-        else
-        {
-            CNode *pChild1 = ((CInternalNode*)m_Root)->getChild(0);
-            CNode *pChild2 = ((CInternalNode*)m_Root)->getChild(1);
-            if (pChild1->getKeyNum()==MINNUM_KEY && pChild2->getKeyNum()==MINNUM_KEY)
-            {
-                pChild1->mergeChild(m_Root, pChild2, 0);
-                delete m_Root;
-                m_Root = pChild1;
-            }
-        }
-    }
-    recursive_remove(m_Root, key);
-    return true;
-}
-
 // parentNode中包含的键值数>MINNUM_KEY
-void CBPlusTree::recursive_remove(CNode* parentNode, KeyType key)
+void CBPlusTree::recursive_remove(BTreeNode* parentNode, KeyType key)
 {
     int keyIndex = parentNode->getKeyIndex(key);
     int childIndex= parentNode->getChildIndex(key, keyIndex); // 孩子结点指针索引
@@ -205,11 +166,11 @@ void CBPlusTree::recursive_remove(CNode* parentNode, KeyType key)
     }
     else // 内结点
     {
-        CNode *pChildNode = ((CInternalNode*)parentNode)->getChild(childIndex); //包含key的子树根节点
+        BTreeNode *pChildNode = ((CInternalNode*)parentNode)->getChild(childIndex); //包含key的子树根节点
         if (pChildNode->getKeyNum()==MINNUM_KEY)                       // 包含关键字达到下限值，进行相关操作
         {
-            CNode *pLeft = childIndex>0 ? ((CInternalNode*)parentNode)->getChild(childIndex-1) : NULL;                       //左兄弟节点
-            CNode *pRight = childIndex<parentNode->getKeyNum() ? ((CInternalNode*)parentNode)->getChild(childIndex+1) : NULL;//右兄弟节点
+            BTreeNode *pLeft = childIndex>0 ? ((CInternalNode*)parentNode)->getChild(childIndex-1) : nullptr;                       //左兄弟节点
+            BTreeNode *pRight = childIndex<parentNode->getKeyNum() ? ((CInternalNode*)parentNode)->getChild(childIndex+1) : nullptr;//右兄弟节点
             // 先考虑从兄弟结点中借
             if (pLeft && pLeft->getKeyNum()>MINNUM_KEY)// 左兄弟结点可借
             {
@@ -234,9 +195,9 @@ void CBPlusTree::recursive_remove(CNode* parentNode, KeyType key)
     }
 }
 
-void CBPlusTree::changeKey(CNode *pNode, KeyType oldKey, KeyType newKey)
+void CBPlusTree::changeKey(BTreeNode *pNode, KeyType oldKey, KeyType newKey)
 {
-    if (pNode!=NULL && pNode->getType()!=LEAF)
+    if (pNode!=nullptr && pNode->getType()!=LEAF)
     {
         int keyIndex = pNode->getKeyIndex(oldKey);
         if (keyIndex<pNode->getKeyNum() && oldKey==pNode->getKeyValue(keyIndex))  // 找到
@@ -250,58 +211,7 @@ void CBPlusTree::changeKey(CNode *pNode, KeyType oldKey, KeyType newKey)
     }
 }
 
-bool CBPlusTree::update(KeyType oldKey, KeyType newKey)
-{
-    if (search(newKey)) // 检查更新后的键是否已经存在
-    {
-        return false;
-    }
-    else
-    {
-        int dataValue;
-        remove(oldKey, dataValue);
-        if (dataValue==INVALID_INDEX)
-        {
-            return false;
-        }
-        else
-        {
-            return insert(newKey, dataValue);
-        }
-    }
-}
-
-void CBPlusTree::remove(KeyType key, DataType& dataValue)
-{
-    if (!search(key))  //不存在
-    {
-        dataValue = INVALID_INDEX;
-        return;
-    }
-    if (m_Root->getKeyNum()==1)//特殊情况处理
-    {
-        if (m_Root->getType()==LEAF)
-        {
-            dataValue = ((CLeafNode*)m_Root)->getData(0);
-            clear();
-            return;
-        }
-        else
-        {
-            CNode *pChild1 = ((CInternalNode*)m_Root)->getChild(0);
-            CNode *pChild2 = ((CInternalNode*)m_Root)->getChild(1);
-            if (pChild1->getKeyNum()==MINNUM_KEY && pChild2->getKeyNum()==MINNUM_KEY)
-            {
-                pChild1->mergeChild(m_Root, pChild2, 0);
-                delete m_Root;
-                m_Root = pChild1;
-            }
-        }
-    }
-    recursive_remove(m_Root, key, dataValue);
-}
-
-void CBPlusTree::recursive_remove(CNode* parentNode, KeyType key, DataType& dataValue)
+void CBPlusTree::recursive_remove(BTreeNode* parentNode, KeyType key, DataType& dataValue)
 {
     int keyIndex = parentNode->getKeyIndex(key);
     int childIndex= parentNode->getChildIndex(key, keyIndex); // 孩子结点指针索引
@@ -321,11 +231,11 @@ void CBPlusTree::recursive_remove(CNode* parentNode, KeyType key, DataType& data
     }
     else // 内结点
     {
-        CNode *pChildNode = ((CInternalNode*)parentNode)->getChild(childIndex); //包含key的子树根节点
+        auto pChildNode = ((CInternalNode*)parentNode)->getChild(childIndex); //包含key的子树根节点
         if (pChildNode->getKeyNum()==MINNUM_KEY)                       // 包含关键字达到下限值，进行相关操作
         {
-            CNode *pLeft = childIndex>0 ? ((CInternalNode*)parentNode)->getChild(childIndex-1) : NULL;                       //左兄弟节点
-            CNode *pRight = childIndex<parentNode->getKeyNum() ? ((CInternalNode*)parentNode)->getChild(childIndex+1) : NULL;//右兄弟节点
+            auto pLeft = childIndex > 0 ? ((CInternalNode*)parentNode)->getChild(childIndex - 1) : nullptr;                       //左兄弟节点
+            auto pRight = childIndex < parentNode->getKeyNum() ? ((CInternalNode*)parentNode)->getChild(childIndex + 1) : nullptr;//右兄弟节点
             // 先考虑从兄弟结点中借
             if (pLeft && pLeft->getKeyNum()>MINNUM_KEY)// 左兄弟结点可借
             {
@@ -350,116 +260,12 @@ void CBPlusTree::recursive_remove(CNode* parentNode, KeyType key, DataType& data
     }
 }
 
-vector<DataType> CBPlusTree::select(KeyType compareKey, int compareOpeartor)
-{
-    vector<DataType> results;
-    if (m_Root!=nullptr)
-    {
-        if (compareKey>m_MaxKey)   // 比较键值大于B+树中最大的键值
-        {
-            if (compareOpeartor==LE || compareOpeartor==LT)
-            {
-                for(CLeafNode* itr = m_DataHead; itr!=NULL; itr= itr->getRightSibling())
-                {
-                    for (int i=0; i<itr->getKeyNum(); ++i)
-                    {
-                        results.push_back(itr->getData(i));
-                    }
-                }
-            }
-        }
-        else if (compareKey<m_DataHead->getKeyValue(0))  // 比较键值小于B+树中最小的键值
-        {
-            if (compareOpeartor==BE || compareOpeartor==BT)
-            {
-                for(CLeafNode* itr = m_DataHead; itr!=NULL; itr= itr->getRightSibling())
-                {
-                    for (int i=0; i<itr->getKeyNum(); ++i)
-                    {
-                        results.push_back(itr->getData(i));
-                    }
-                }
-            }
-        }
-        else  // 比较键值在B+树中
-        {
-            SelectResult result;
-            search(compareKey, result);
-            switch(compareOpeartor)
-            {
-                case LT:
-                case LE:
-                {
-                    CLeafNode* itr = m_DataHead;
-                    int i;
-                    while (itr!=result.targetNode)
-                    {
-                        for (i=0; i<itr->getKeyNum(); ++i)
-                        {
-                            results.push_back(itr->getData(i));
-                        }
-                        itr = itr->getRightSibling();
-                    }
-                    for (i=0; i<result.keyIndex; ++i)
-                    {
-                        results.push_back(itr->getData(i));
-                    }
-                    if (itr->getKeyValue(i)<compareKey ||
-                        (compareOpeartor==LE && compareKey==itr->getKeyValue(i)))
-                    {
-                        results.push_back(itr->getData(i));
-                    }
-                }
-                    break;
-                case EQ:
-                {
-                    if (result.targetNode->getKeyValue(result.keyIndex)==compareKey)
-                    {
-                        results.push_back(result.targetNode->getData(result.keyIndex));
-                    }
-                }
-                    break;
-                case BE:
-                case BT:
-                {
-                    CLeafNode* itr = result.targetNode;
-                    if (compareKey<itr->getKeyValue(result.keyIndex) ||
-                        (compareOpeartor==BE && compareKey==itr->getKeyValue(result.keyIndex))
-                            )
-                    {
-                        results.push_back(itr->getData(result.keyIndex));
-                    }
-                    int i;
-                    for (i=result.keyIndex+1; i<itr->getKeyNum(); ++i)
-                    {
-                        results.push_back(itr->getData(i));
-                    }
-                    itr = itr->getRightSibling();
-                    while (itr!=NULL)
-                    {
-                        for (i=0; i<itr->getKeyNum(); ++i)
-                        {
-                            results.push_back(itr->getData(i));
-                        }
-                        itr = itr->getRightSibling();
-                    }
-                }
-                    break;
-                default:  // 范围查询
-                    break;
-            }
-        }
-    }
-    sort<vector<DataType>::iterator>(results.begin(), results.end());
-    return results;
-}
-
 vector<DataType> CBPlusTree::selectArrange(KeyType smallKey, KeyType largeKey)
 {
     vector<DataType> results;
     if (smallKey<=largeKey)
     {
-        SelectResult start, end;
+        SelectResult start{}, end{};
         search(smallKey, start);
         search(largeKey, end);
         CLeafNode* itr = start.targetNode;
@@ -495,7 +301,7 @@ void CBPlusTree::search(KeyType key, SelectResult& result)
     recursive_search(m_Root, key, result);
 }
 
-void CBPlusTree::recursive_search(CNode* pNode, KeyType key, SelectResult& result)
+void CBPlusTree::recursive_search(BTreeNode* pNode, KeyType key, SelectResult& result)
 {
     int keyIndex = pNode->getKeyIndex(key);
     int childIndex = pNode->getChildIndex(key, keyIndex); // 孩子结点指针索引
