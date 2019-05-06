@@ -10,22 +10,21 @@ using namespace std;
 int main() {
     auto* buffer=new Buffer();
     initBuffer(520,64,buffer);
-//    int* blk= reinterpret_cast<int *>(readBlockFromDisk(60, buffer));
-//    for (int i = 0; i < 14; i+=2) {
-//        cout<<blk[i]<<" "<<blk[i+1]<<" ";
+//    initBuffer(520,64,buffer1);
+//    Sort_Merge(buffer,510);
+//    loopJoin(buffer1);
+//    for (int i = 510; i <=558 ; ++i) {
+//        int* blk= reinterpret_cast<int *>(readBlockFromDisk(i, buffer));
+//        for (int j = 0; j <=15 ; ++j) {
+//            cout<<blk[j]<<" ";
+//        }
+//        freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk), buffer);
+//        cout<<endl;
 //    }
-//    cout<<endl;
-//    BinarySearch(buffer,30,61);
-    int* resblk= reinterpret_cast<int *>(readBlockFromDisk(61, buffer));
-    for (int i = 0; i < 14; i+=2) {
-        cout<<resblk[i]<<" "<<resblk[i+1]<<" ";
-    }
-    cout<<endl;
-    SearchBPlusTree(buffer,30,62);
-    resblk= reinterpret_cast<int *>(readBlockFromDisk(62, buffer));
-    for (int i = 0; i < 14; i+=2) {
-        cout<<resblk[i]<<" "<<resblk[i+1]<<" ";
-    }
+//    cout<<"merge连接"<<buffer->numIO;
+//    cout<<"循环连接"<<buffer1->numIO;
+      //  HashJoinR(buffer);
+      HashJoinS(buffer);
 }
 
 
