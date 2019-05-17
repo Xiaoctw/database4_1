@@ -28,14 +28,14 @@ void LinearSelect1(int val1,int addr,Buffer* buffer){
     int totalNumBlock=16;
     int K=7;
     int i=1;
-    int* blk= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
+    int* blk=cast1(getNewBlockInBuffer(buffer));
     int index=0;
     while (totalNumBlock>0){
         int num=min(totalNumBlock,K);
         totalNumBlock-=num;//总的数量减少K个
         int* blocks[num];
         for (int j = 0; j < num; ++j) {
-            blocks[j]= reinterpret_cast<int *>(readBlockFromDisk(i + j, buffer));
+            blocks[j]= cast1(readBlockFromDisk(i + j, buffer));
             //  memset(blocks[j],0, sizeof(blocks[j]));
         }
         i+=num;//跟进起始位置
@@ -50,25 +50,25 @@ void LinearSelect1(int val1,int addr,Buffer* buffer){
                 if(index==14){
                     blk[index]=0;
                     blk[index+1]=addr+1;
-                    writeBlockToDisk(reinterpret_cast<unsigned char *>(blk), addr, buffer);//进行写入操作
-                    freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk), buffer);
+                    writeBlockToDisk(cast2(blk), addr, buffer);//进行写入操作
+                    freeBlockInBuffer(cast2(blk), buffer);
                     addr++;
                     index=0;
-                    blk= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
+                    blk= cast1(getNewBlockInBuffer(buffer));
                 }
             }
         }
         for (int j = 0; j < num; ++j) {
             blk[14]=0;
             blk[15]=addr+1;
-            freeBlockInBuffer(reinterpret_cast<unsigned char *>(blocks[j]), buffer);
+            freeBlockInBuffer(cast2(blocks[j]), buffer);
         }
     }
     if(index!=0){
         for (int j = index; j <=15 ; ++j) {
             blk[j]=0;
         }
-        writeBlockToDisk(reinterpret_cast<unsigned char *>(blk), addr, buffer);
+        writeBlockToDisk(cast2(blk), addr, buffer);
     }
 }
 
@@ -82,14 +82,14 @@ void LinearSelect2(int val,int addr,Buffer* buffer){
     int totalNumBlock=32;
     int K=7;//每个块中元组个数
     int i=20;//初始位置
-    int* blk= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
+    int* blk= cast1(getNewBlockInBuffer(buffer));
     int index=0;//设置写入磁盘的块对应的下标
     while (totalNumBlock>0){
         int num=min(totalNumBlock,K);
         totalNumBlock-=num;//总的数量减少K个
         int* blocks[num];
         for (int j = 0; j < num; ++j) {
-            blocks[j]= reinterpret_cast<int *>(readBlockFromDisk(i + j, buffer));
+            blocks[j]= cast1(readBlockFromDisk(i + j, buffer));
         }
         i+=num;//跟进起始位置
         for (int j = 0; j < num; ++j) {
@@ -103,23 +103,23 @@ void LinearSelect2(int val,int addr,Buffer* buffer){
                 if(index==14){
                     blk[index]=0;
                     blk[index+1]=addr+1;
-                    writeBlockToDisk(reinterpret_cast<unsigned char *>(blk), addr, buffer);//进行写入操作
-                    freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk), buffer);
+                    writeBlockToDisk(cast2(blk), addr, buffer);//进行写入操作
+                    freeBlockInBuffer(cast2(blk), buffer);
                     addr++;
                     index=0;
-                    blk= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
+                    blk= cast1(getNewBlockInBuffer(buffer));
                 }
             }
         }
         for (int j = 0; j < num; ++j) {
-            freeBlockInBuffer(reinterpret_cast<unsigned char *>(blocks[j]), buffer);
+            freeBlockInBuffer(cast2(blocks[j]), buffer);
         }
     }
     if(index!=0){
         for (int j = index; j <=15 ; ++j) {
             blk[j]=0;
         }
-        writeBlockToDisk(reinterpret_cast<unsigned char *>(blk), addr, buffer);
+        writeBlockToDisk(cast2(blk), addr, buffer);
     }
 }
 

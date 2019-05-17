@@ -8,8 +8,6 @@
 #include <climits>
 #include "extrem.h"
 #include <cstring>
-#define MAX_SIZE 7
-#define CAST reinterpret_cast<int *>
 /**
  * 进行外存归并排序,这只是一部分函数
  * beg与end之间最多有7个元组
@@ -59,9 +57,9 @@ void sort_merge1(Buffer *buffer, int beg, int end, int target){
      int len=end-beg+1;
     int* blks[end-beg+1];//块的数组指针
     for (int i = beg; i <=end ; ++i) {
-        blks[i-beg]= reinterpret_cast<int *>(readBlockFromDisk(i, buffer));
+        blks[i-beg]= cast1(readBlockFromDisk(i, buffer));
     }
-    int* resblk= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
+    int* resblk= cast1(getNewBlockInBuffer(buffer));
     int indexes[end-beg+1];
     int res_index=0;
     memset(indexes,0, sizeof(indexes));
@@ -75,18 +73,18 @@ void sort_merge1(Buffer *buffer, int beg, int end, int target){
             res_index=0;
             resblk[15]=target+1;
             target++;//进行自增操作
-            writeBlockToDisk(reinterpret_cast<unsigned char *>(resblk), target-1, buffer);
-            freeBlockInBuffer(reinterpret_cast<unsigned char *>(resblk), buffer);
-            resblk= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
+            writeBlockToDisk(cast2(resblk), target-1, buffer);
+            freeBlockInBuffer(cast2(resblk), buffer);
+            resblk= cast1(getNewBlockInBuffer(buffer));
         }
     }
     if(res_index!=0){
-        writeBlockToDisk(reinterpret_cast<unsigned char *>(resblk), target, buffer);
+        writeBlockToDisk(cast2(resblk), target, buffer);
     }
     for (int j = 0; j < len; ++j) {
-        freeBlockInBuffer(reinterpret_cast<unsigned char *>(blks[j]), buffer);
+        freeBlockInBuffer(cast2(blks[j]), buffer);
     }
-    freeBlockInBuffer(reinterpret_cast<unsigned char *>(resblk), buffer);
+    freeBlockInBuffer(cast2(resblk), buffer);
 }
 
 /**
@@ -96,7 +94,7 @@ void sort_merge1(Buffer *buffer, int beg, int end, int target){
  * @param target
  */
 void sort_blk(int addr,Buffer* buffer,int target){
-     int* blk= reinterpret_cast<int *>(readBlockFromDisk(addr, buffer));
+     int* blk= cast1(readBlockFromDisk(addr, buffer));
     for (int i = 0; i < 14; i+=2) {
         int min=i;
         for (int j = i+2; j < 14; j+=2) {
@@ -111,8 +109,8 @@ void sort_blk(int addr,Buffer* buffer,int target){
         blk[min]=tem1;
         blk[min+1]=tem2;
     }
-    writeBlockToDisk(reinterpret_cast<unsigned char *>(blk),target,buffer);
-    freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk), buffer);
+    writeBlockToDisk(cast2(blk),target,buffer);
+    freeBlockInBuffer(cast2(blk), buffer);
  }
 
  /**
@@ -174,15 +172,15 @@ void sort_blk(int addr,Buffer* buffer,int target){
  void sort_merge2(Buffer* buffer,int beg1,int end1,int beg2,int end2,int beg3,int end3,int target){
      int i1=0,i2=0,i3=0;
      bool flag1= beg1<end1,flag2= beg2<end2,flag3=beg3<end3;
-     int* blk1=CAST(readBlockFromDisk(beg1, buffer));
-     int* blk2= reinterpret_cast<int *>(readBlockFromDisk(beg2, buffer));
+     int* blk1=cast1(readBlockFromDisk(beg1, buffer));
+     int* blk2= cast1(readBlockFromDisk(beg2, buffer));
      int* blk3;
      if(!flag3){
-         blk3= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
+         blk3= cast1(getNewBlockInBuffer(buffer));
      } else {
-         blk3 = reinterpret_cast<int *>(readBlockFromDisk(beg3, buffer));
+         blk3 = cast1(readBlockFromDisk(beg3, buffer));
      }
-    int* newblk= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
+    int* newblk= cast1(getNewBlockInBuffer(buffer));
      int i4=0;
     do{
        int index=find_min(blk1[i1],blk2[i2],blk3[i3],flag1,flag2,flag3);
@@ -191,9 +189,9 @@ void sort_blk(int addr,Buffer* buffer,int target){
            newblk[i4+1]=blk1[i1+1];
            i1+=2;
            if(i1==14){
-               freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk1), buffer);
+               freeBlockInBuffer(cast2(blk1), buffer);
                if(beg1<end1) {
-                   blk1 = reinterpret_cast<int *>(readBlockFromDisk(beg1 + 1, buffer));
+                   blk1 = cast1(readBlockFromDisk(beg1 + 1, buffer));
                    i1=0;
                    beg1++;
                } else{
@@ -205,9 +203,9 @@ void sort_blk(int addr,Buffer* buffer,int target){
            newblk[i4+1]=blk2[i2+1];
            i2+=2;
            if(i2==14){
-               freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk2), buffer);
+               freeBlockInBuffer(cast2(blk2), buffer);
                if(beg2<end2) {
-                   blk2 = reinterpret_cast<int *>(readBlockFromDisk(beg2 + 1, buffer));
+                   blk2 = cast1(readBlockFromDisk(beg2 + 1, buffer));
                    beg2++;
                    i2=0;
                } else{
@@ -219,10 +217,10 @@ void sort_blk(int addr,Buffer* buffer,int target){
            newblk[i4+1]=blk3[i3+1];
            i3+=2;
            if(i3==14){
-               freeBlockInBuffer(reinterpret_cast<unsigned char *>(blk3), buffer);
+               freeBlockInBuffer(cast2(blk3), buffer);
                if(beg3<end3) {
                    i3=0;
-                   blk3 = reinterpret_cast<int *>(readBlockFromDisk(beg3 + 1, buffer));
+                   blk3 = cast1(readBlockFromDisk(beg3 + 1, buffer));
                    beg3++;
                } else{
                    flag3= false;
@@ -233,8 +231,8 @@ void sort_blk(int addr,Buffer* buffer,int target){
        if(i4==14){
            newblk[i4]=0;
            newblk[i4+1]=target+1;
-           writeBlockToDisk(reinterpret_cast<unsigned char *>(newblk), target, buffer);
-           newblk= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
+           writeBlockToDisk(cast2(newblk), target, buffer);
+           newblk= cast1(getNewBlockInBuffer(buffer));
            target++;
            i4=0;
        }

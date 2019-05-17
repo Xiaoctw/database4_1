@@ -8,15 +8,15 @@
 #define BEG_RELA_R 1
 #define NUM_RELA_S 32
 #define BEG_RELA_S 20
-#define cast1 reinterpret_cast<int *>
-#define cast2 reinterpret_cast<unsigned char *>
 #include "extrem.h"
-int res_index_blk_hash=100;
-int blk_index_hash=0;
-
+int res_index_blk_hash;
+int blk_index_hash;
 void loopJoinBlk(const int *blk1, const int *blk2, Buffer *buffer, int *new_blk){
     for (int i = 0; i < 14; i+=2) {
         for (int j = 0; j < 14; j+=2) {
+            if(blk1[i]==0){
+                continue;//避免最后的0参与运算
+            }
             if(blk1[i]==blk2[j]){
                 new_blk[blk_index_hash]=blk1[i];
                 new_blk[blk_index_hash+1]=blk1[i+1];
@@ -24,27 +24,27 @@ void loopJoinBlk(const int *blk1, const int *blk2, Buffer *buffer, int *new_blk)
                 blk_index_hash+=3;//向后移三个位置
                 if(blk_index_hash==15){
                     new_blk[15]=0;
-                    writeBlockToDisk(reinterpret_cast<unsigned char *>(new_blk),res_index_blk_hash, buffer);
-                    freeBlockInBuffer(reinterpret_cast<unsigned char *>(new_blk), buffer);
+                    writeBlockToDisk(cast2(new_blk),res_index_blk_hash, buffer);
+                    freeBlockInBuffer(cast2(new_blk), buffer);
                     blk_index_hash=0;
-                    new_blk= reinterpret_cast<int *>(getNewBlockInBuffer(buffer));
+                    new_blk= cast1(getNewBlockInBuffer(buffer));
                     res_index_blk_hash++;
                 }
             }
         }
     }
 }
-void loopJoin(Buffer *buffer){
+void loopjoin(Buffer *buffer, int beg1, int num1, int beg2, int num2){
     int*  new_blk;
     int num=6;//外层循环一个读取6个块,内存循环一次读取1个块
     new_blk= cast1(getNewBlockInBuffer(buffer));
-    for (int i = BEG_RELA_R; i <= BEG_RELA_R+NUM_RELA_R-1; i+=num) {
-        int num_blk=min(num,NUM_RELA_R-i+1);
+    for (int i = beg1; i <=beg1+num1-1; i+=num) {
+        int num_blk=min(num,beg1+num1-i);
         int* blks[num_blk];
         for (int j = 0; j < num_blk; ++j) {
             blks[j]= cast1(readBlockFromDisk(i + j, buffer));//读入外层循环的磁盘块
         }
-        for (int k = BEG_RELA_S; k <=BEG_RELA_S+NUM_RELA_S-1 ; ++k) {
+        for (int k = beg2; k <=beg2+num2-1 ; ++k) {
             int* blk2= cast1(readBlockFromDisk(k, buffer));
             for (int j = 0; j < num_blk; ++j) {
                 loopJoinBlk(blks[j], blk2, buffer, new_blk);
@@ -59,10 +59,17 @@ void loopJoin(Buffer *buffer){
         for (int i = blk_index_hash; i <16 ; ++i) {
             new_blk[i]=0;
         }
+        blk_index_hash=0;
         writeBlockToDisk(cast2(new_blk), res_index_blk_hash, buffer);
         freeBlockInBuffer(cast2(new_blk), buffer);
     }
 }
+void LOOPJOIN(Buffer *buffer){
+    res_index_blk_hash=100;
+    blk_index_hash=0;
+    loopjoin(buffer, BEG_RELA_R, NUM_RELA_R, BEG_RELA_S, NUM_RELA_S);
+}
+
 /**
  * 进行merge连接算法
  * @param buffer
@@ -249,7 +256,7 @@ void Sort_Merge(Buffer* buffer,int target){
   * 对R进行哈希操作
   * @param buffer 缓冲区
   */
- void HashJoinR(Buffer* buffer){
+ void HASH_R(Buffer *buffer){
      int* blk0=cast1(getNewBlockInBuffer(buffer));
      int* blk1= cast1(getNewBlockInBuffer(buffer));
      int* blk2=cast1(getNewBlockInBuffer(buffer));
@@ -285,7 +292,7 @@ void Sort_Merge(Buffer* buffer,int target){
   * 对S进行哈希操作
   * @param buffer 缓冲区
   */
- void HashJoinS(Buffer* buffer){
+ void HASH_S(Buffer *buffer){
      int* blk0=cast1(getNewBlockInBuffer(buffer));
      int* blk1= cast1(getNewBlockInBuffer(buffer));
      int* blk2=cast1(getNewBlockInBuffer(buffer));
@@ -323,7 +330,15 @@ void Sort_Merge(Buffer* buffer,int target){
   * 分5个桶
   */
 void HashJoin(Buffer* buffer){
-
+     HASH_R(buffer);
+     HASH_S(buffer);
+    res_index_blk_hash=700;
+    blk_index_hash=0;
+    loopjoin(buffer,600,4,650,7);
+    loopjoin(buffer,610,2,660,6);
+    loopjoin(buffer,620,4,670,7);
+    loopjoin(buffer,630,4,680,9);
+    loopjoin(buffer,640,4,690,7);
 }
 
 

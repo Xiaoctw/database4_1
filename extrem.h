@@ -7,7 +7,8 @@
 
 #define BLOCK_AVAILABLE 0
 #define BLOCK_UNAVAILABLE 1
-
+#define cast1 reinterpret_cast<int *>
+#define cast2 reinterpret_cast<unsigned char *>
 typedef struct tagBuffer {
     unsigned long numIO; /* Number of IO's*/
     size_t bufSize; /* Buffer size*/
